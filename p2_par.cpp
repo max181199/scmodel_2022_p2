@@ -2,7 +2,7 @@
 #include <time.h>
 #include <mpi.h>
 
-#define N 28
+#define N 1000
 #define I (16.0 / 135)
 #define V 16
 #define B -123
@@ -15,13 +15,23 @@ struct Point {
   double z;
 };
 
-void fill(Point* p, long len) {
-  for (int i = 0; i < len; i++)
-  {
-    p[i].x = 2 * (static_cast<double>(std::rand()) / RAND_MAX) - 1;
-    p[i].y = 2 * (static_cast<double>(std::rand()) / RAND_MAX) - 1;
-    p[i].z = 4 * (static_cast<double>(std::rand()) / RAND_MAX) - 2;
+void fill(Point* p, long len, int size) {
+  int diff = N % size > 0 ? size - N % size : 0;
+  for (int i = 0; i < len; i++){
+    if (diff > 0){
+      diff--;
+      p[i].x = 0;
+      p[i].y = 0;
+      p[i].z = 0;
+      //("Y,");
+    } else {
+      p[i].x = 2 * (static_cast<double>(std::rand()) / RAND_MAX) - 1;
+      p[i].y = 2 * (static_cast<double>(std::rand()) / RAND_MAX) - 1;
+      p[i].z = 4 * (static_cast<double>(std::rand()) / RAND_MAX) - 2;
+      //printf("X,");
+    }
   }
+  //printf("\n");
   return;
 }
 
@@ -37,23 +47,29 @@ int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);              
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
   if (size < 2){
     printf("Need more then one process\n ");
     MPI_Finalize();  
     return 1;
   }
   
+
   clock_t start = clock();
 
   if (rank == 0){
     
+    int slave = size - 1;
+    int len = N + (N % slave > 0 ? slave - N % slave : 0);
+    int slave_len = len / slave;
+
     int sendcounts[size];
     int displs[size];
     sendcounts[0] = 0;
     displs[0] = 0;
     for (int i = 1; i < size; i++){
-      sendcounts[i] = N * 3;
-      displs[i] = (i-1) * N * 3;
+      sendcounts[i] = slave_len * 3;
+      displs[i] = (i-1) * slave_len * 3;
     }
 
     srand(1);
@@ -63,40 +79,44 @@ int main(int argc, char* argv[]) {
     sscanf(argv[1], "%lf", &epsilon);
     
     
-    Point p[(size - 1) * N];
+    Point p[len];
     
     int scale = 1;
     double integral = 0;
     double summ = 0;
 
-    fill(p, (size - 1) * N);
+    fill(p, len, slave);
 
     while (abs(I - integral) > epsilon) {
       MPI_Scatterv(p, sendcounts, displs, MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
-      fill(p, (size - 1) * N);
+      fill(p, len, slave);
       double tmp_summ;
       MPI_Reduce(&summ, &tmp_summ, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
       summ = tmp_summ;
-      integral = V * summ / (N * (size - 1) * scale);
+      integral = V * summ / (N * scale);
       scale++;
+      //printf("%d  %lf\n",scale, abs(I - integral));
     }
-    
-    for (long i = 0; i < (size - 1) * N; i += N){
+
+    for (long i = 0; i < len; i += slave_len){
       p[i].x = B;
     }
     
     MPI_Scatterv(p, sendcounts, displs, MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
 
-    printf("RES=%.10lf, DEF=%.10lf,  NUM=%d;\n", integral, abs(I- integral), (scale - 1) * N * (size - 1));
+    printf("RES=%.10lf, DEF=%.10lf,  NUM=%d;\n", integral, abs(I- integral), (scale - 1) * N );
   
   } else {
-    Point p[N];
+    int slave = size - 1;
+    int len = N + (N % slave > 0 ? slave - N % slave : 0);
+    int slave_len = len / slave;
+    Point p[slave_len];
     while (true){
-      MPI_Scatterv(NULL, NULL, NULL, MPI_DOUBLE, p, N * 3, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
+      MPI_Scatterv(NULL, NULL, NULL, MPI_DOUBLE, p, slave_len * 3, MPI_DOUBLE, 0, MPI_COMM_WORLD); 
       if (p[0].x == B)
         break;
       double summ = 0;
-      for (long i = 0; i < N; i++){
+      for (long i = 0; i < slave_len; i++){
         summ += F(p[i]);
       }
       MPI_Reduce(&summ, NULL, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);  
