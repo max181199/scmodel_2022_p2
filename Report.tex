@@ -1,0 +1,283 @@
+\documentclass[12pt, a4paper ]{article}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english,russian]{babel} 
+
+
+\usepackage{geometry} % Поля страницы
+\geometry{left=3cm} % левое поле
+\geometry{right=1.5cm} % правое поле
+\geometry{top=2cm} % верхнее поле
+\geometry{bottom=2cm} % нижнее поле
+
+\usepackage{graphicx}
+\graphicspath{ {./} }
+
+\usepackage{textpos}
+\usepackage{listings}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage[pdftex]{pict2e}
+  
+  \hypersetup{
+  colorlinks,
+  citecolor=Blue,
+  linkcolor=Red,
+  urlcolor=Blue}
+  
+  \lstdefinelanguage{myC}{
+  sensitive = true,
+  language=C,
+  keywords={for, \#pragma,  pragma, \s\#, omp, parallel},
+  keywordstyle=\color{blue},
+  numbers=left,
+  numberstyle=\scriptsize,
+  stepnumber=1,
+  numbersep=10pt,
+  showstringspaces=false,
+  breaklines=true,
+  frame=right,
+  stringstyle=\color{WildStrawberry}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+  }
+
+\begin{document}
+\begin{titlepage}
+ \begin{center}
+    \includegraphics[width=5cm]{MSU}
+ \end{center}
+ \begin{center}
+Московский государственный университет имени М. В. Ломоносова \\
+Факультет вычислительной математики и кибернетики \\
+Кафедра системного программирования \\
+\end{center}
+\vspace{7em}
+\begin{center}
+\Large \textbf {Отчёт по заданию в рамках курса \\
+«Суперкомпьютерное моделирование и технологии» \\
+Численное интегрирование многомерных функций
+методом Монте-Карло} 
+\end{center}
+\vspace{4em}
+\begin{textblock*}{\textwidth}(10cm,0cm)
+\large \textbf { Выполнил:} \\
+\end{textblock*}
+\vspace{1.8em}
+\begin{textblock*}{\textwidth}(10.5cm,0cm)
+\large Федяшкин Максим Алексеевич \\
+\large 627 группа\\
+\large Вариант 16
+\end{textblock*}
+\vspace*{\fill}
+ \begin{center}
+  21 Октября 2022 г.
+\end{center}
+\end{titlepage}
+\section{\large Математическая постановка задачи}
+Функция \(f(x, y, z)\) - непрерывна в ограниченной замкнутой области $G \subset \mathbb{R}^3$. Требуется вычислить определённый интеграл:\\
+\begin{gather}
+  I = \iiint\limits_G f(x, y, z) \,dx\,dy\,dz
+\end{gather}\\
+Для 16 варианта:~~$f(x, y, z) = x^2y^2z^2,~G = \{ (x, y, z) : |x| + |y| \leq 1,~ -2 \leq z \leq 2 \} $, и интеграл принимает вид:
+\begin{gather}
+  I = \iiint\limits_G  x^2y^2z^2 \,dx\,dy\,dz
+\end{gather}
+\section{\large Аналитическое решение}
+\begin{equation}
+\begin{split}
+I &= \iiint\limits_G  x^2y^2z^2 \,dx\,dy\,dz =  2\int_{0}^{1}\int_{x-1}^{1-x}\int_{-2}^{2} x^2y^2z^2 \,dx\,dy\,dz = 2\left(\dfrac{z^3}{3}\right)\Big|_{-2}^{2}\int_{0}^{1}\int_{x-1}^{1-x} x^2y^2 \,dx\,dy = \\[10pt] &= \dfrac{32}{3}\int_{0}^{1} x^2\left(\dfrac{y^3}{3}\right)\Big|_{x-1}^{1-x} \,dx = \dfrac{32}{9}\int_{0}^{1} 2x^2\left(1-x\right)^3 \,dx = \dfrac{64}{9} \int_{0}^{1} x^2 -3x^3 + 3x^4 - x^5 \,dx = \\[10pt] & = \dfrac{64}{9}\left(\dfrac{x^3}{3} - \dfrac{3x^4}{4} + \dfrac{3x^5}{5} - \dfrac{x^6}{6}\right)\Big|_{0}^{1} = \dfrac{64}{9}\left(\dfrac{1}{3} - \dfrac{3}{4} + \dfrac{3}{5} - \dfrac{1}{6}\right)  = \dfrac{16}{135}
+\end{split}
+\end{equation}
+\section{\large Численный метод}
+Пусть область $G$ ограниченна параллелепипедом:  
+$
+\Pi :
+ \begin{cases}
+   a_1 \leq x \leq b_1\\
+   a_2 \leq y \leq b_2\\
+   a_3 \leq z \leq b_3\\
+   \end{cases}
+~\refstepcounter{equation}(\theequation)
+$
+\\[10pt]
+Рассмотрим функцию: $F(x, y, z)$ = 
+$
+   \begin{cases}
+   f(x, y, z),~&(x, y, z) \subset G\\
+   0,~&(x, y, z) \not\subset G\\
+ \end{cases}
+ ~\refstepcounter{equation}(\theequation)
+$
+\\[10pt]
+Преобразуем искомый интеграл:
+\begin{equation*}
+\iiint\limits_G  f(x, y, z) \,dx\,dy\,dz = \iiint\limits_\Pi  F(x, y, z) \,dx\,dy\,dz 
+\end{equation*}\\
+$p_1(x_1, y_1, z_1), p_2(x_2, y_2, z_2), . . .$ - случайные точки, равномерно распределённые в $\Pi$.В качестве приближённого значения
+интеграла можно использовать выражение:  
+\begin{equation}
+I \approx |\Pi| \dfrac{1}{n} \sum_{n=1}^{n} p_i
+\end{equation}\\
+где $|\Pi|$ - объём параллелепипеда $\Pi (4)$
+\newpage
+Для 16 варианта: $|\Pi| = 16$,~
+$
+\Pi :
+ \left\{\begin{aligned}
+   -1 \leq x \leq 1\\
+   -1 \leq y \leq 1\\
+    2 \leq z \leq 2\\
+   \end{aligned}\right.
+$
+\section{\large Программная реализация}
+Полный код решения доступен по ссылке \href{https://github.com/max181199/scmodel_2022_p2}{GitHub}. \\В основе алгоритма лежит вычисление частичных сумм $ \sum\limits_{i = (M - 1)(N)}^{(M)(N)  -  1} F(p_i)$,\\[10pt] где $M \in [1; scale]$; $scale$ - кол-во частичных сумм изначально равное 1; $N$ - кол-во суммируемых точек в частичной сумме (является фиксированным числом). \\[15pt]Тогда приблизительно вычисленный интеграл $I_{scale}$ можно представить как: \\[10pt] $I_{scale} = |\Pi|\dfrac{1}{scaleN}summ,~summ = \sum\limits_{M = 1}^{scale} \sum\limits_{(M - 1)(N)}^{(M)(N)  -  1} F(p_i)$.\\[10pt] Пока не получена необходимая точность $epsilon$ по метрике $|I - I_{scale}|$: пересчитывается $I_{scale}$, затем $scale$ увеличивается на 1, после проверяется метрика. Если нужная точность достигнута, то  $I_{scale}$ искомое приближенное значение, а кол-во сгенерированных точек ${(scale - 1) * N}$. Иначе повторяем пересчет  $I_{scale}$, увеличение $scale$, проверку метрики. Соотвественно данная часть алгоритма реализована посредством цикла $while$.\\[15pt]Для вычисления частичной суммы $summ$  на каждой итерации цикла $while$ генерируется $N$ точек, которые хранятся в массиве $P[N]$, при каждой новой итерации, предыдущие точки затираются. При этом $summ$ сохраняет значение с предыдущий итерации, что позволяет сэкономить на вычислениях:\\[10pt]  $summ = summ + \sum\limits_{i = 0}^{N  -  1} F(p_i)$ \\[10pt] где $p_i$ - точки сгенерированные на новой итерации, номер которой $scale$(на момент вычисления приближенного значения интеграла и частичной суммы $while$ на 1, потом $scale - 1$).\\[15pt] Точки геннирирутся посредство $rand()$ так, чтобы они лежали в $\Pi$. Для упрощения замеров для $srand$ выбирается всегда одинаковое неизменяемое число. Вычисление частисной суммы оформлено в виде цикла $for$, который проходит по всем точкам ${P[N]}$.\\[15pt] Важно отметить эвристическое наблюдение, что при увеличении $N$ увеличивается и общее кол-во сгенерированных точек. Объяснить это можно тем, что прирост частичной суммы на каждой итерации оказывает большее влияние на значение приближенного интеграла и ему сложнее попасть в $epsilon$ окрестность точного значения. 
+\subsection{\large Последовательная реализация}
+Последовательная реализация представлена в файле с именем: p2\_seq.cpp;\\[10pt] В данном решении полностью реализован алгоритм описанный выше. Единственно стоит отметить, что наиболее эффективным является вычисление интеграла при $N$ = 1;
+\subsection{\large Параллельная реализация}
+Параллельная реализация представлена в файле с именем: p2\_par.c;\\[10pt] В данном решении представлена распараллеленая версия алгоритма описанного выше. Для увелечения скорости подсчет частичных сумм реализован на дополнительных процессорах. Пусть $P$ - кол-во процессоров, тогда процессоров для подсчета частичных сумм $P - 1$ (далее рабочие), 0 процесс считается мастером. Аналогично алгоритму кол-во генерируемых точек на итерации $while$ задается через $N$. Определим переменную $len$ как ближайшее целое большее или равное $N$ и кратное $P - 1$. Тогда каждый рабочий обрабатывает $\dfrac{len} {P - 1}$ точек. Каждую итерацию мастер начинает с выполнения $MPI\_Scatterv()$, после которой начинает генерировать новую партию точек, не дожидаясь пока рабочие закончат свои вычисления, сгенерировав новые точки, мастер дожидается завершения вычислений рабочих и выполняет $MPI\_Reduce$, после этого работа выполняется согласно общему алгоритму (вычисление частичной суммы, перерасчет приближенного интеграла, увеличение scale, проверка точности). На каждой итерации $while$ мастер генерирует $N$ точек, при этом если $len > N$, то в массив кладутся точки с нулевыми координатами (F(0, 0, 0) = 0).  Рабочий не знает сколько итераций выполнит $while$ мастера, поэтому использует  $while(true)$. Рабочий на начало итерации находится в ожидании приема точек с помощью $MPI\_Scatterv$, получив точки он вычисляет сумму значений функции в точках, после встает в режим ожидания выполнения $MPI\_Reduce$, когда reduce начинается новая итерация. Чтобы выйти из $while(true)$ рабочий должен получить набор точек, у которого 1 элемент имеет координату x равную заранее выбранному числу $B \notin [-1; 1]$. Соответсвенно мастер после того как вычислил интеграл с нужной точностью должен послать еще один набор точек каждому рабочему, чтобы они завершили работу. При этом после получения  $B$, рабочие сразу выходят из цикла и завершают работу.
+ \section{\large Исследование масштабируемости}
+ Для точности измерений зафиксируем параметры:
+\begin{enumerate}
+  \item $N = 1000$ ~- кол-во точек генерируемых мастером на каждой итерации цикла $while$
+  \item $B = -123$ ~- магическое число для остановки рабочих.
+  \item $srand(z)$ - где $z = 1$ всегда одинаковая константа.
+\end{enumerate} 
+ \newpage
+\subsection{\large Blue Gene}
+\begin{center}
+  \includegraphics[width=40em, height= 25em]{BLUEGENE}
+\end{center}
+\subsection{\large Polus}
+\begin{table}[h!]
+\centering
+\begin{tabular}{ |m{5em}|m{5.5em}|m{7em}|m{7em}|m{7em}| } 
+ \hline
+ Точность $\varepsilon$ & Число MPI-процессов & Время работы программы(с) & Ускорение & Ошибка \\ 
+ \hline
+ \multirow{4}{10em}{$3.0\cdot10^{-5}$} & 2 & 0.012 & 1 & 0.0000078373 \\ 
+ \cline{2-5}
+ & 4 & 0.012 & 1 &  0.0000078373 \\
+  \cline{2-5}
+ & 16 & 0.022 & 0.54(54) &   0.0000078373 \\
+ \cline{2-5}
+  & 32 & 0. 02& 0.6 &   0.0000078373 \\
+   \cline{1-5}
+   \multirow{4}{10em}{$5.0\cdot10^{-6}$} & 2 & 0.162 & 1 & 0.0000015638 \\ 
+   \cline{2-5}
+ & 4 & 0.16 & 1.0125 & 0.0000015638 \\
+ \cline{2-5}
+ & 16 & 0.214 & 0.757   & 0.0000015638 \\
+ \cline{2-5}
+  & 32 & 0.236 & 0.68644 &  0.0000015638 \\
+  \cline{1-5}
+   \multirow{4}{10em}{$15.0\cdot10^{-7}$} & 2 & 0.17 & 1 & 0.0000006108 \\ 
+   \cline{2-5}
+ & 4  & 0.162 & 1.0493 & 0.0000006108 \\
+ \cline{2-5}
+ & 16 & 0.21  & 0.80952 & 0.0000006108  \\
+ \cline{2-5}
+  & 30 & 0.224 & 0.75892 & 0.0000006108 \\
+ \hline
+\end{tabular}
+\caption{Таблица с результатами расчётов для системы Polus}
+\label{table:2}
+\end{table}
+\begin{table}[]
+\centering
+\begin{tabular}{ m{30em} } 
+\setlength{\unitlength}{1cm}
+\begin{picture}(8,4)
+  \thinlines % Start with thin lines
+  \put(11,-0.7){\hbox{\kern3pt \texttt{Кол-во процессов}}}
+  \put(0,0){\vector(1,0){11}}  % x axis
+  \put(1,0){\line(0,-0.1){0.2}}
+  \put(0.8,-0.6){\hbox{\kern3pt \texttt{$2$}}}
+  \put(3,0){\line(0,-0.1){0.2}}
+  \put(2.8,-0.6){\hbox{\kern3pt \texttt{$4$}}}
+  \put(6,0){\line(0,-0.1){0.2}}
+  \put(5.7,-0.6){\hbox{\kern3pt \texttt{$16$}}}
+  \put(10,0){\line(0,-0.1){0.2}}
+  \put(9.7,-0.6){\hbox{\kern3pt \texttt{$64$}}}
+  \put(-3,5){\hbox{\kern3pt \texttt{Ускорение}}}
+  \put(0,0){\vector(0,1){5}}  % y axis
+  \thicklines % Use thicker lines for the \qbezier commands
+  \qbezier(1,5)(2,5)(3,5)
+  \qbezier(3,5)(5,3.5)(6,2.7)
+  \qbezier(6,2.7)(8,2.85)(10,3)
+  \thinlines % Back to using thin lines
+\end{picture}
+\end{tabular}\\[25pt]
+\label*{График 1: Polus, $\epsilon = 3.0e-5$}\\[45pt]
+\end{table}
+\begin{table}[]
+\centering
+\begin{tabular}{ m{30em} } 
+\setlength{\unitlength}{1cm}
+\begin{picture}(8,4)
+  \thinlines % Start with thin lines
+  \put(11,-0.7){\hbox{\kern3pt \texttt{Кол-во процессов}}}
+  \put(0,0){\vector(1,0){11}}  % x axis
+  \put(1,0){\line(0,-0.1){0.2}}
+  \put(0.8,-0.6){\hbox{\kern3pt \texttt{$2$}}}
+  \put(3,0){\line(0,-0.1){0.2}}
+  \put(2.8,-0.6){\hbox{\kern3pt \texttt{$4$}}}
+  \put(6,0){\line(0,-0.1){0.2}}
+  \put(5.7,-0.6){\hbox{\kern3pt \texttt{$16$}}}
+  \put(10,0){\line(0,-0.1){0.2}}
+  \put(9.7,-0.6){\hbox{\kern3pt \texttt{$64$}}}
+  \put(-3,5){\hbox{\kern3pt \texttt{Ускорение}}}
+  \put(0,0){\vector(0,1){5}}  % y axis
+  \thicklines % Use thicker lines for the \qbezier commands
+  \qbezier(1,5)(2,5.03)(3,5.06)
+  \qbezier(3,5.06)(5,4.2)(6,3.785)
+  \qbezier(6,3.785)(8,3.6)(10,3.4322)
+  \thinlines % Back to using thin lines
+\end{picture}
+\end{tabular}\\[25pt]
+\label*{График 2: Polus, $\epsilon = 5.0e-6$}
+\end{table}
+\begin{table}[]
+\centering
+\begin{tabular}{ m{30em} } 
+\setlength{\unitlength}{1cm}
+\begin{picture}(8,4)
+  \thinlines % Start with thin lines
+  \put(11,-0.7){\hbox{\kern3pt \texttt{Кол-во процессов}}}
+  \put(0,0){\vector(1,0){11}}  % x axis
+  \put(1,0){\line(0,-0.1){0.2}}
+  \put(0.8,-0.6){\hbox{\kern3pt \texttt{$2$}}}
+  \put(3,0){\line(0,-0.1){0.2}}
+  \put(2.8,-0.6){\hbox{\kern3pt \texttt{$4$}}}
+  \put(6,0){\line(0,-0.1){0.2}}
+  \put(5.7,-0.6){\hbox{\kern3pt \texttt{$16$}}}
+  \put(10,0){\line(0,-0.1){0.2}}
+  \put(9.7,-0.6){\hbox{\kern3pt \texttt{$64$}}}
+  \put(-3,5){\hbox{\kern3pt \texttt{Ускорение}}}
+  \put(0,0){\vector(0,1){5}}  % y axis
+  \thicklines % Use thicker lines for the \qbezier commands
+  \qbezier(1,5)(2,5.1)(3,5.2)
+  \qbezier(3,5.2)(5,4.5)(6,4.045)
+  \qbezier(6,4.045)(8,3.9)(10,3.79)
+  \thinlines % Back to using thin lines
+\end{picture}
+\end{tabular}\\[25pt]
+\label*{График 3: Polus, $\epsilon = 15.0e-7$}
+\end{table}
+\newpage
+  \section{\large Вывод}
+  На основе результатов исследования можно сделать выводы, эффективность работы программы уменьшается при увеличении кол-ва процессов. При этом важно отметить, что благодаря фиксации параметров общее кол-во сгеннерированных точек и точность не меняются. Объяснить результат можно следующими наблюдениями:
+ \begin{enumerate}
+ \item Генерация точки занимает существенно больше времени, чем подсчет значения  функции $F$. Из-за этого рабочие простаивают и ждут пока мастер сгенерирует точки для следующей рассылки
+ \item Операция рассылки и сбора очень дорогостоящие и, как показывает исследование на Polus, не окупают вычисление части частичной суммы на рабочем. Особенно это хорошо видно если увеличить вычислительную сложность $F$.
+ \item В замечание упоминается что при увеличении $N$, растет и кол-во точек необходимых для достижения нужной точности. При этом чтобы рабочие не делали бессмысленных вычислений необходимо чтобы $N > P - 1$. Что приводит к тому, что $N$ необходимо брать достаточно большим. 
+ \item Дополнительная потеря времени на пересылку дополнительных $N$ точек и сбор времени работы каждого рабочего.
+\end{enumerate}  
+В результате можно сделать вывод, что предложенный алгоритм мастер-рабочий крайне плохо подходит к данной задаче, и последовательное решение эффективней.
+\end{document}
+
